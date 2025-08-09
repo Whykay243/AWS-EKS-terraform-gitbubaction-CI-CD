@@ -14,12 +14,14 @@ env:
   TF_KEY: eks/terraform.tfstate        # backend key path
   TF_REGION: us-east-1                 # backend region
   CLUSTER_NAME: prod-eks-cluster       # EKS cluster name (adjust if needed)
-  NODEGROUP_NAME: worker-nodes         # node group name (must match TF config)
+  NODEGROUP_PREFIX: worker-nodes       # node group prefix (used to detect full name)
 
 jobs:
   terraform:
     name: Terraform Plan & Apply
     runs-on: ubuntu-latest
+    outputs:
+      nodegroup: ${{ steps.get-nodegroup.outputs.nodegroup }}
 
     steps:
       - name: Checkout code
@@ -63,7 +65,7 @@ jobs:
         run: |
           echo "Waiting for EKS cluster '${{ env.CLUSTER_NAME }}' to become ACTIVE..."
           aws eks wait cluster-active --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
-          echo "EKS cluster is ACTIVE."
+          echo "EKS cluster is ACTIVE.✅"
         # ensure EKS control plane is ready before continuing
 
       - name: List existing node groups for debugging
@@ -73,6 +75,19 @@ jobs:
           aws eks list-nodegroups --cluster-name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
         # debug: check what node groups currently exist
 
+      - name: Get full node group name dynamically
+        id: get-nodegroup
+        if: github.ref == 'refs/heads/main'
+        run: |
+          nodegroup_full_name=$(aws eks list-nodegroups \
+            --cluster-name ${{ env.CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "nodegroups[?starts_with(@, '${{ env.NODEGROUP_PREFIX }}')]" \
+            --output text)
+          echo "Found nodegroup: $nodegroup_full_name"
+          echo "::set-output name=nodegroup::$nodegroup_full_name"
+        # dynamically find node group name that starts with the prefix
+
       - name: Wait 60 seconds to allow node group creation
         if: github.ref == 'refs/heads/main'
         run: sleep 60
@@ -81,12 +96,13 @@ jobs:
       - name: Wait for node group to be active
         if: github.ref == 'refs/heads/main'
         run: |
-          echo "Waiting for nodegroup '${{ env.NODEGROUP_NAME }}' to be ACTIVE..."
+          nodegroup=${{ steps.get-nodegroup.outputs.nodegroup }}
+          echo "Waiting for nodegroup '$nodegroup' to be ACTIVE..."
           aws eks wait nodegroup-active \
             --cluster-name ${{ env.CLUSTER_NAME }} \
-            --nodegroup-name ${{ env.NODEGROUP_NAME }} \
+            --nodegroup-name "$nodegroup" \
             --region ${{ env.AWS_REGION }}
-          echo "Node group is ACTIVE."
+          echo "Node group is ACTIVE.✅"
         # ensure node group (worker nodes) is ready so workloads can schedule
 
       - name: Generate kubeconfig file dynamically

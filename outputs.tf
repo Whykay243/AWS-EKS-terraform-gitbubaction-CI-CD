@@ -26,3 +26,8 @@ output "public_subnets" {
   description = "Public subnet IDs"
   value       = module.vpc.public_subnets
 }
+
+output "cluster_id" {
+  description = "The ID of the EKS cluster"
+  value       = data.aws_eks_cluster.app-cluster.id
+}
