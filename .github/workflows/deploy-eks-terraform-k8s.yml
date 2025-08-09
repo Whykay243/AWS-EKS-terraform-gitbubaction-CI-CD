@@ -5,15 +5,16 @@ on:
     branches: [main]
 
 permissions:
-  id-token: write          # Needed for GitHub OIDC to assume AWS role securely
+  id-token: write          # allow OIDC role assumption
   contents: read
 
 env:
-  AWS_REGION: us-east-1                # AWS Region for resources
-  BUCKET_NAME: whykay-backend-bucket  # S3 bucket for Terraform backend state
-  TF_KEY: eks/terraform.tfstate        # Path to Terraform state file in S3
-  TF_REGION: us-east-1                 # Region of S3 backend
-  CLUSTER_NAME: my-eks-cluster         # Name of EKS cluster
+  AWS_REGION: us-east-1                # AWS region to use
+  BUCKET_NAME: whykay-backend-bucket   # S3 bucket for Terraform backend
+  TF_KEY: eks/terraform.tfstate        # backend key path
+  TF_REGION: us-east-1                 # backend region
+  CLUSTER_NAME: prod-eks-cluster       # EKS cluster name (adjust if needed)
+  NODEGROUP_NAME: worker-nodes         # node group name (must match TF config)
 
 jobs:
   terraform:
@@ -22,62 +23,104 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Get repo code
+        uses: actions/checkout@v4
+        # get repository code so Terraform can run against the configs
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::293926504711:role/Githubaction-aws-assumerole
-          aws-region: ${{ env.AWS_REGION }}  # Authenticate using GitHub OIDC and IAM Role
+          aws-region: ${{ env.AWS_REGION }}
+        # Authenticate to AWS using GitHub OIDC (no static keys required)
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3  # Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        # install Terraform CLI
 
       - name: Terraform Init
         run: |
           terraform init \
             -backend-config="bucket=${{ env.BUCKET_NAME }}" \
             -backend-config="key=${{ env.TF_KEY }}" \
-            -backend-config="region=${{ env.TF_REGION }}"  # Initialize Terraform with S3 backend
+            -backend-config="region=${{ env.TF_REGION }}"
+        # init with S3 backend config (state stored remotely)
 
       - name: Terraform Validate
-        run: terraform validate  # Check config correctness
+        run: terraform validate
+        # quick syntax/config check
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan.out  # Generate execution plan
+        run: terraform plan -out=tfplan.out
+        # generate plan (saved to file to apply exactly)
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan.out  # Apply changes on main branch
+        run: terraform apply -auto-approve tfplan.out
+        # apply resources only on main branch
+
+      - name: Wait for EKS cluster to be active
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Waiting for EKS cluster '${{ env.CLUSTER_NAME }}' to become ACTIVE..."
+          aws eks wait cluster-active --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+          echo "EKS cluster is ACTIVE."
+        # ensure EKS control plane is ready before continuing
+
+      - name: Wait for node group to be active
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Waiting for nodegroup '${{ env.NODEGROUP_NAME }}' to be ACTIVE..."
+          aws eks wait nodegroup-active \
+            --cluster-name ${{ env.CLUSTER_NAME }} \
+            --nodegroup-name ${{ env.NODEGROUP_NAME }} \
+            --region ${{ env.AWS_REGION }}
+          echo "Node group is ACTIVE."
+        # ensure node group (worker nodes) is ready so workloads can schedule
 
       - name: Generate kubeconfig file dynamically
         if: github.ref == 'refs/heads/main'
         run: |
-          aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} --kubeconfig kubeconfig.yaml
-          # Create kubeconfig for cluster access during workflow
+          # create a kubeconfig.yaml in the runner (ephemeral)
+          aws eks update-kubeconfig \
+            --name ${{ env.CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --kubeconfig kubeconfig.yaml
+        # create kubeconfig for subsequent kubectl/helm steps
 
       - name: Upload kubeconfig artifact (optional)
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: kubeconfig
-          path: kubeconfig.yaml  # Save kubeconfig as downloadable artifact
+          path: kubeconfig.yaml
+        # upload kubeconfig as an artifact for manual download or later jobs
 
   deploy:
-    name: Deploy to EKS
+    name: Deploy (uses generated kubeconfig)
     runs-on: ubuntu-latest
-    needs: terraform  # Wait for terraform job to complete
+    needs: terraform
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Get repo code for deployment manifests
+        uses: actions/checkout@v4
+        # check out manifests / charts to deploy
 
       - name: Download kubeconfig artifact
         uses: actions/download-artifact@v4
         with:
           name: kubeconfig
-          path: .  # Retrieve kubeconfig from previous job
+          path: .
+        # download kubeconfig produced earlier
 
       - name: Set KUBECONFIG environment variable
         run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
-        # Tell kubectl where to find kubeconfig
+        # tell kubectl where to find kubeconfig (affects subsequent steps)
+
+      # Optional verification step (uncomment to test connectivity)
+      # - name: Verify kubectl connectivity
+      #   run: kubectl get nodes
+      #   # quick check to make sure kubectl can talk to cluster
+
+      # Add your deployment steps below, for example:
+      # - name: Deploy Kubernetes manifests
+      #   run: kubectl apply -f k8s/deployment.yaml
