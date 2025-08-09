@@ -1,0 +1,25 @@
+eks-terraform-project/
+├── main.tf              # Root Terraform configuration
+├── variables.tf         # Input variables
+├── outputs.tf           # Output values
+├── provider.tf          # AWS provider configuration
+├── vpc.tf               # Networking resources (VPC, subnets, etc.)
+├── eks-cluster.tf       # EKS cluster definition
+├── node-group.tf        # EKS node group definition
+├── iam.tf               # IAM roles and policies
+├── versions.tf          # Required Terraform version
+└── kubeconfig.tf        # Local kubeconfig setup
+
+
+How these files connect
+vpc.tf creates networking (VPC + subnets)
+
+iam.tf creates IAM roles needed by EKS and nodes
+
+eks-cluster.tf creates the EKS cluster, referencing vpc.tf outputs like vpc_id and private_subnets
+
+node-group.tf creates worker nodes (EC2 Auto Scaling group or managed node groups) linked to the cluster in eks-cluster.tf and the subnets from vpc.tf
+
+kubeconfig.tf writes cluster connection config from eks-cluster.tf outputs
+
+outputs.tf exposes useful outputs (cluster endpoint, node group names, kubeconfig path, etc.)
