@@ -85,7 +85,8 @@ jobs:
             --query "nodegroups[?starts_with(@, '${{ env.NODEGROUP_PREFIX }}')]" \
             --output text)
           echo "Found nodegroup: $nodegroup_full_name"
-          echo "::set-output name=nodegroup::$nodegroup_full_name"
+          echo "nodegroup=$nodegroup_full_name" >> $GITHUB_OUTPUT
+
         # dynamically find node group name that starts with the prefix
 
       - name: Wait 60 seconds to allow node group creation
