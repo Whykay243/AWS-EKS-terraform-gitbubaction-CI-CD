@@ -66,6 +66,18 @@ jobs:
           echo "EKS cluster is ACTIVE."
         # ensure EKS control plane is ready before continuing
 
+      - name: List existing node groups for debugging
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Listing current node groups for cluster '${{ env.CLUSTER_NAME }}'..."
+          aws eks list-nodegroups --cluster-name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        # debug: check what node groups currently exist
+
+      - name: Wait 60 seconds to allow node group creation
+        if: github.ref == 'refs/heads/main'
+        run: sleep 60
+        # wait a bit before checking node group status to avoid timing issues
+
       - name: Wait for node group to be active
         if: github.ref == 'refs/heads/main'
         run: |
@@ -80,7 +92,6 @@ jobs:
       - name: Generate kubeconfig file dynamically
         if: github.ref == 'refs/heads/main'
         run: |
-          # create a kubeconfig.yaml in the runner (ephemeral)
           aws eks update-kubeconfig \
             --name ${{ env.CLUSTER_NAME }} \
             --region ${{ env.AWS_REGION }} \
