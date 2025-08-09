@@ -74,3 +74,4 @@ provider "kubernetes" {
   token                  = data.aws_eks_cluster_auth.app-cluster.token
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.app-cluster.certificate_authority[0].data)
 }
+
