@@ -46,7 +46,7 @@ module "eks" {
   enable_irsa = true                # Enable IAM Roles for Service Accounts (IRSA)
 
   eks_managed_node_groups = {
-    default = {
+    worker-nodes = {
       instance_types   = [var.node_instance_type]
       desired_capacity = var.desired_capacity
       max_capacity     = var.max_capacity
