@@ -47,9 +47,6 @@ jobs:
             -backend-config="region=${{ env.TF_REGION }}"
         # init with S3 backend config (state stored remotely)
 
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
-
       - name: Terraform Validate
         run: terraform validate
         # quick syntax/config check
@@ -125,3 +122,6 @@ jobs:
           name: kubeconfig
           path: kubeconfig.yaml
         # upload kubeconfig as an artifact for manual download or later jobs
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
