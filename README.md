@@ -4,15 +4,17 @@ This project uses Terraform to provision an Amazon EKS (Elastic Kubernetes Servi
 
 ---
 
-## Folder Structure
+## 📂 Folder Structure
 
+```plaintext
 eks-terraform-project/
-├── main.tf # Root Terraform configuration: calls VPC and EKS modules
-├── variables.tf # Input variables definitions with defaults and descriptions
-├── outputs.tf # Output values to expose cluster info and VPC details
-├── provider.tf # AWS provider configuration
-├── iam.tf # IAM roles and policies needed for EKS cluster control plane
-└── kubeconfig.tf # Writes local kubeconfig file to connect to the EKS cluster
+├── main.tf          # Root Terraform configuration: calls VPC and EKS modules
+├── variables.tf     # Input variables definitions with defaults and descriptions
+├── outputs.tf       # Output values to expose cluster info and VPC details
+├── provider.tf      # AWS provider configuration
+├── iam.tf           # IAM roles and policies needed for EKS cluster control plane
+└── kubeconfig.tf    # Writes local kubeconfig file to connect to the EKS cluster
+
 
 ---
 
