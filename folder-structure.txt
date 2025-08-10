@@ -3,11 +3,10 @@ eks-terraform-project/
 ├── variables.tf         # Input variables
 ├── outputs.tf           # Output values
 ├── provider.tf          # AWS provider configuration
-├── vpc.tf               # Networking resources (VPC, subnets, etc.)
-├── eks-cluster.tf       # EKS cluster definition
-├── node-group.tf        # EKS node group definition
+├── backend.tf           # Backend for terraform state file storage
 ├── iam.tf               # IAM roles and policies
 ├── versions.tf          # Required Terraform version
+├── kubeconfig.tpl       # kube config template
 └── kubeconfig.tf        # Local kubeconfig setup
 
 
