@@ -55,10 +55,10 @@ jobs:
         run: terraform plan -out=tfplan.out
         # generate plan (saved to file to apply exactly)
 
-      # - name: Terraform Apply
-      #   if: github.ref == 'refs/heads/main'
-      #   run: terraform apply -auto-approve tfplan.out
-      #   # apply resources only on main branch
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan.out
+        # apply resources only on main branch
 
       - name: Wait for EKS cluster to be active
         if: github.ref == 'refs/heads/main'
@@ -123,5 +123,5 @@ jobs:
           path: kubeconfig.yaml
         # upload kubeconfig as an artifact for manual download or later jobs
 
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
+      # - name: Terraform Destroy
+      #   run: terraform destroy -auto-approve
