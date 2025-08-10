@@ -122,33 +122,3 @@ jobs:
           name: kubeconfig
           path: kubeconfig.yaml
         # upload kubeconfig as an artifact for manual download or later jobs
-
-  deploy:
-    name: Deploy (uses generated kubeconfig)
-    runs-on: ubuntu-latest
-    needs: terraform
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        # check out manifests / charts to deploy
-
-      - name: Download kubeconfig artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: kubeconfig
-          path: .
-        # download kubeconfig produced earlier
-
-      - name: Set KUBECONFIG environment variable
-        run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
-        # tell kubectl where to find kubeconfig (affects subsequent steps)
-
-      # Optional verification step (uncomment to test connectivity)
-      # - name: Verify kubectl connectivity
-      #   run: kubectl get nodes
-      #   # quick check to make sure kubectl can talk to cluster
-
-      # Add your deployment steps below, for example:
-      # - name: Deploy Kubernetes manifests
-      #   run: kubectl apply -f k8s/deployment.yaml
