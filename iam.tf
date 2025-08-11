@@ -43,7 +43,7 @@ resource "aws_iam_role" "alb_controller" {
     Statement = [{
       Effect = "Allow",
       Principal = {
-        # NOTE: Use data source reference here since OIDC provider is fetched, not created
+        # Use data source since OIDC provider already exists
         Federated = data.aws_iam_openid_connect_provider.eks.arn
       },
       Action = "sts:AssumeRoleWithWebIdentity",
@@ -56,9 +56,16 @@ resource "aws_iam_role" "alb_controller" {
   })
 }
 
-# Attach the AWS managed policy for ALB controller permissions
+# Create the ALB Controller IAM policy from local file (you need to add iam_policy.json file in your module)
+resource "aws_iam_policy" "alb_controller_policy" {
+  name        = "AWSLoadBalancerControllerIAMPolicy"
+  description = "IAM policy for AWS Load Balancer Controller"
+  policy      = file("${path.module}/iam_policy.json")
+}
+
+# Attach the ALB Controller IAM policy created above to the role
 resource "aws_iam_policy_attachment" "alb_controller_policy_attach" {
   name       = "alb-controller-policy-attachment"
   roles      = [aws_iam_role.alb_controller.name]
-  policy_arn = "arn:aws:iam::aws:policy/AWSLoadBalancerControllerIAMPolicy"
+  policy_arn = aws_iam_policy.alb_controller_policy.arn
 }
