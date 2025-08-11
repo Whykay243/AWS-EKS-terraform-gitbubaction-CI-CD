@@ -24,17 +24,14 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
 }
 
-
 # Fetch EKS cluster info for OIDC URL
 data "aws_eks_cluster" "cluster" {
   name = var.cluster_name
 }
 
-# Create OIDC provider resource with cluster OIDC URL
-resource "aws_iam_openid_connect_provider" "eks" {
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da0afd7e91d"]  # EKS thumbprint
-  url             = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
+# Reference existing OIDC provider for the EKS cluster
+data "aws_iam_openid_connect_provider" "eks" {
+  url = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
 }
 
 # Create IAM Role for AWS Load Balancer Controller with trust policy to OIDC provider
@@ -46,7 +43,8 @@ resource "aws_iam_role" "alb_controller" {
     Statement = [{
       Effect = "Allow",
       Principal = {
-        Federated = aws_iam_openid_connect_provider.eks.arn
+        # NOTE: Use data source reference here since OIDC provider is fetched, not created
+        Federated = data.aws_iam_openid_connect_provider.eks.arn
       },
       Action = "sts:AssumeRoleWithWebIdentity",
       Condition = {
