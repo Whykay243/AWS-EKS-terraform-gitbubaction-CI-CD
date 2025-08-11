@@ -60,7 +60,8 @@ resource "aws_iam_role" "alb_controller" {
 resource "aws_iam_policy" "alb_controller_policy" {
   name        = "AWSLoadBalancerControllerIAMPolicy"
   description = "IAM policy for AWS Load Balancer Controller"
-  policy      = file("${path.module}/iam_policy.json")
+  policy = file("iam_policy.json")
+ #policy      = file("${path.module}/iam_policy.json")
 }
 
 # Attach the ALB Controller IAM policy created above to the role
