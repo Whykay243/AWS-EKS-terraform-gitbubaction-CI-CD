@@ -31,3 +31,8 @@ output "cluster_id" {
   description = "The ID of the EKS cluster"
   value       = data.aws_eks_cluster.app-cluster.id
 }
+
+output "alb_controller_role_arn" {
+  value = aws_iam_role.alb_controller.arn
+  description = "ARN of the IAM role for ALB controller"
+}
